@@ -1,46 +1,134 @@
-# foot-traffic-tally
-Foot-Traffic Tally – a zero-install, tap-to-count PWA that logs pedestrian traffic and exports CSV/PDF reports.
-Foot-Traffic Tally
-Count. Save. Export. — the one-tap people-counter for shop-owners, market stalls, event managers, and anyone who needs fast, reliable foot-flow data.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Foot-Traffic Tally</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FileSaver for CSV download -->
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* ad areas fixed for desktop, tucked away on small screens */
+    .ad-side {
+      @apply hidden lg:flex fixed top-0 h-screen w-32 items-center justify-center bg-gray-100 border-x border-gray-300 text-gray-500; /* Tailwind shortcut via CDN */
+    }
+  </style>
+  <link rel="manifest" href="manifest.json" />
+  <script>
+ if ('serviceWorker' in navigator) {
+   navigator.serviceWorker.register('/service-worker.js');
+ }
+</script>
 
-What it does
-Foot-Traffic Tally turns any phone, tablet, or laptop into a digital clicker. Open the app, tap the screen (or the “+ Person” button) each time someone passes your stand, doorway, or exhibition booth, and watch the live counter climb in bold, easy-to-read numbers. When your shift ends, save the session, then export a clean CSV or PDF report for your landlord, head office, or marketing team—no spreadsheets or manual tallies required.
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center bg-teal-50 text-slate-800 select-none" onclick="increment()">
+  <!-- ─── LEFT & RIGHT SIDE ADS (desk-only) ─────────────────────────── -->
+  <div id="adLeft" class="ad-side left-0" onclick="event.stopPropagation()"> 
+    <!-- replace img / iframe with real ad code -->
+    <span class="rotate-90 whitespace-nowrap">Ad 300×600</span>
+  </div>
+  <div id="adRight" class="ad-side right-0" onclick="event.stopPropagation()">
+    <span class="-rotate-90 whitespace-nowrap">Ad 300×600</span>
+  </div>
 
-Key features
-One-tap counting	Touch anywhere on the screen—or the dedicated “+ Person” button—to log a visitor.
-Undo & Reset	Mistap? Hit Undo. Ready for a new shift? Reset & Save archives the finished session and starts fresh.
-Automatic session log	Start and end times, total count—every shift is stored locally (works offline) so you never lose data between days.
-Instant exports	• CSV for Excel/Google Sheets • PDF with time-stamped lines—perfect for landlord reports.
-Offline first, no sign-up	Runs entirely in your browser; data is kept in your device’s local storage until you choose to export.
-Installable PWA	Add it to your home screen—looks and feels like a native app.
-Ad-ready layout	Discrete banner and side-bar slots let you monetise traffic with AdSense or local sponsors (optional, disabled by default).
+  <!-- ─── MAIN APP CONTENT ─────────────────────────────────────────── -->
+  <main class="flex flex-col items-center justify-center px-4 lg:px-40">
+    <h1 class="text-3xl font-semibold mb-4">Foot-Traffic Tally</h1>
+    <div id="count" class="text-6xl font-bold mb-6">0</div>
 
-Who it’s for
-Mall & market tenants – prove foot-flow to negotiate rent or marketing rebates.
+    <!-- Action buttons -->
+    <div class="space-x-3 mb-6">
+      <button id="add" class="bg-teal-600 text-white px-6 py-3 rounded-lg shadow">+ Person</button>
+      <button id="undo" class="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg">Undo</button>
+    </div>
+    <div class="space-x-3 mb-6">
+      <button id="reset" class="bg-orange-500 text-white px-5 py-2 rounded">Reset & Save Session</button>
+    </div>
+    <div class="space-x-3 mb-24"> <!-- give space for bottom banner -->
+      <button id="csv" class="bg-blue-500 text-white px-4 py-2 rounded">Export CSV</button>
+      <button id="pdf" class="bg-purple-600 text-white px-4 py-2 rounded">Export PDF</button>
+    </div>
+    <p class="mt-8 text-xs text-gray-500">Tap anywhere on the screen to increment.</p>
+  </main>
 
-Pop-up & kiosk operators – track ROI during weekend activations.
+  <!-- ─── BOTTOM STICKY AD BANNER ──────────────────────────────────── -->
+  <div id="adBottom" class="fixed bottom-0 inset-x-0 h-20 flex items-center justify-center bg-gray-100 border-t border-gray-300 text-gray-600" onclick="event.stopPropagation()">
+    <!-- placeholder; swap with Adsense/AdMob code iframe -->
+    <span>Banner Ad 728×90</span>
+  </div>
 
-Event organisers – monitor entrance counts, peak times, and staffing needs.
+  <script>
+    (() => {
+      const countEl = document.getElementById('count');
+      let count = Number(localStorage.ftt_count || 0);
+      let sessionStart = Number(localStorage.ftt_sessionStart || Date.now());
+      let log = JSON.parse(localStorage.ftt_log || '[]');
 
-Tourism boards & museums – tally visitor numbers in temporary exhibits without expensive hardware.
+      countEl.textContent = count;
 
-Why users love it
-Zero learning curve – if you can tap, you can tally.
+      function saveState() {
+        localStorage.ftt_count = count;
+        localStorage.ftt_sessionStart = sessionStart;
+        localStorage.ftt_log = JSON.stringify(log);
+      }
 
-Nothing to install – works in Chrome, Safari, Edge, Firefox; can be saved as a home-screen shortcut.
+      window.increment = () => {
+        count++;
+        countEl.textContent = count;
+        saveState();
+      };
 
-Private by design – no cameras, no log-ins, no data sent to the cloud unless you decide to.
+      function undo() {
+        if (count > 0) {
+          count--;
+          countEl.textContent = count;
+          saveState();
+        }
+      }
 
-Lightweight – < 65 kB before libraries; opens instantly even on spotty 3G.
+      function reset() {
+        log.push({ start: sessionStart, end: Date.now(), count });
+        count = 0;
+        sessionStart = Date.now();
+        countEl.textContent = 0;
+        saveState();
+      }
 
-Typical workflow
-Open Foot-Traffic Tally at the start of your shift.
+      function exportCSV() {
+        const rows = ['start,end,count'];
+        log.forEach(({ start, end, count }) => {
+          rows.push(`${new Date(start).toISOString()},${new Date(end).toISOString()},${count}`);
+        });
+        const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        saveAs(blob, 'foot_traffic_log.csv');
+      }
 
-Tap once per passer-by; glance at the live count any time.
+      function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(14);
+        doc.text('Foot-Traffic Tally – Session Log', 10, 10);
+        let y = 20;
+        log.forEach(({ start, end, count }, idx) => {
+          doc.setFontSize(11);
+          doc.text(`${idx + 1}. ${new Date(start).toLocaleString()} → ${new Date(end).toLocaleString()}  |  Count: ${count}`, 10, y);
+          y += 8;
+          if (y > 280) { doc.addPage(); y = 20; }
+        });
+        doc.save('foot_traffic_log.pdf');
+      }
 
-Press Reset & Save when you clock out.
-
-Email the day’s CSV or PDF to your manager—or compile weekly reports with two clicks.
-
-That’s all—no extra hardware, no subscription. Just accurate counts in the palm of your hand.
-
+      // button listeners
+      const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
+      document.getElementById('add').addEventListener('click', stop(window.increment));
+      document.getElementById('undo').addEventListener('click', stop(undo));
+      document.getElementById('reset').addEventListener('click', stop(reset));
+      document.getElementById('csv').addEventListener('click', stop(exportCSV));
+      document.getElementById('pdf').addEventListener('click', stop(exportPDF));
+    })();
+  </script>
+</body>
+</html>
