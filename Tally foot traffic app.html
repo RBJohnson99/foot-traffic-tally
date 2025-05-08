@@ -16,6 +16,13 @@
       @apply hidden lg:flex fixed top-0 h-screen w-32 items-center justify-center bg-gray-100 border-x border-gray-300 text-gray-500; /* Tailwind shortcut via CDN */
     }
   </style>
+  <link rel="manifest" href="manifest.json" />
+  <script>
+ if ('serviceWorker' in navigator) {
+   navigator.serviceWorker.register('/service-worker.js');
+ }
+</script>
+
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center bg-teal-50 text-slate-800 select-none" onclick="increment()">
   <!-- ─── LEFT & RIGHT SIDE ADS (desk-only) ─────────────────────────── -->
